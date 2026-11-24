@@ -690,9 +690,9 @@
       "savings_vs_baseline_pct": 73.1
     },
     "D. Neon plan/review + 10 batched Hydrogen": {
-      "total_per_1k_runs_usd": 217.31,
-      "single_run_cost_usd": 0.21731,
-      "input_cost_per_1k_runs_usd": 91.31,
+      "total_per_1k_runs_usd": 231.56,
+      "single_run_cost_usd": 0.23156,
+      "input_cost_per_1k_runs_usd": 105.56,
       "output_cost_per_1k_runs_usd": 126.0,
       "turns": [
         {
@@ -820,15 +820,15 @@
           "turn": 12,
           "model": "gemini-4-neon",
           "input_tokens": 20500,
-          "cached_tokens": 20000,
-          "uncached_tokens": 500,
+          "cached_tokens": 15000,
+          "uncached_tokens": 5500,
           "output_tokens": 1200,
-          "input_cost_per_1k_usd": 4.5,
+          "input_cost_per_1k_usd": 18.75,
           "output_cost_per_1k_usd": 18.0,
-          "turn_total_per_1k_usd": 22.5
+          "turn_total_per_1k_usd": 36.75
         }
       ],
-      "savings_vs_baseline_pct": 80.9
+      "savings_vs_baseline_pct": 79.7
     }
   },
   "05_interactions_api_handoffs": {

@@ -6,7 +6,7 @@
 2. **One Timestamp Just Cost You 81% of Your LLM Bill: A Plain-English Guide to Gemini 4 Prompt Caching** *(High CTR curiosity hook)*
 3. **How Prompt Caching Actually Works (Step-by-Step Store Catalog Example, Illustrations & Exact Token Math)** *(Strong beginner search intent)*
 4. **Stop Re-Reading Your System Prompt: Per-Model Prompt Caching Across Gemini 4 Carbon, Neon, and Hydrogen** *(Architecture & agent builders)*
-5. **From $1,140 to $217 per 1,000 Agent Runs: Prompt Caching + Multi-Model Batching in Gemini 4** *(Data-driven FinOps / engineering hook)*
+5. **From $1,140 to $231 per 1,000 Agent Runs: Prompt Caching + Multi-Model Batching in Gemini 4** *(Data-driven FinOps / engineering hook)*
 
 ---
 
@@ -23,7 +23,7 @@ Here are 4 eye-opening findings from running the experiments live:
 1. **No boilerplate required:** Gemini 4 uses automatic *Implicit Context Caching* exclusively (95% discount on cached input tokens once a shared prefix reaches 4,096 tokens). Old explicit `caches.create()` calls now return `HTTP 400`.
 2. **Prefixes match strictly from Token 0:** Moving a changing turn timestamp from the start of `system_instruction` to the end of the user prompt took Gemini 4 Hydrogen from **0% cached ($22.43 / 1K calls)** to **85.9% cached ($4.13 / 1K calls)** — an **81.6% input cost drop** and **nearly 2× faster response** (`3.39s → 1.72s`).
 3. **Caches are NOT shared across models:** Carbon, Neon, and Hydrogen each keep their own private memory. Switching models pays a one-time cold start, while the original model's cache stays warm when you switch back (Neon hit **85.4% cached**, and Carbon hit **84.7% cached**, cutting Carbon's latency from `7.76s` down to `4.52s`!).
-4. **Once input is cached, Output + Thinking dominates your bill:** In a 12-turn store support agent loop, fixing prefix caching alone cut 1,000 runs from **$1,140.00 to $408.50 (-64.2%)**. Batching the 10 worker turns on Hydrogen while planning/reviewing on Neon cut it further to **$217.31 (-80.9%)**!
+4. **Once input is cached, Output + Thinking dominates your bill:** In a 12-turn store support agent loop (1,000 runs = 12,000 API calls), fixing prefix caching alone cut total cost from **$1,140.00 to $408.50 (-64.2%)**. Batching the 10 worker turns on Hydrogen while planning/reviewing on Neon cut it further to **$231.56 (-79.7%, or $0.23 per 12-turn run)**!
 
 Bonus detail explained simply in the post: why your live cache hit sits at ~85% instead of 99.9% on short chats (Gemini 4's documented 2,050-token trailing window!).
 
@@ -76,12 +76,12 @@ Live 6-step run (`Carbon → Neon → Hydrogen → Hydrogen → Neon → Carbon`
 *(Attach: `images/03_per_model_kv_isolation.png`)*
 
 **5/6**
-The biggest surprise on a 12-turn store support agent (per 1,000 runs):
+The biggest surprise on a 12-turn store support agent (per 1,000 runs = 12,000 calls):
 
-- All Carbon (broken prefix): **$1,140.00**
+- All Carbon (broken prefix): **$1,140.00** ($1.14/run)
 - All Carbon (cached): **$408.50** (-64.2%)
 - All Neon (cached): **$306.38** (-73.1%)
-- Neon Plan/Review + 10 batched Hydrogen workers: **$217.31** (**-80.9%!**)
+- Neon Plan/Review + 10 batched Hydrogen workers: **$231.56** (**-79.7% — $0.23/run!**)
 
 Once input is cached, Output + Thinking becomes 70% of your bill — so batching worker turns on Hydrogen is huge.
 

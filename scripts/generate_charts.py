@@ -267,12 +267,12 @@ def plot_12_turn_tco(data: dict) -> None:
 
     ax.set_yticks(y)
     ax.set_yticklabels(short_labels, fontsize=10, fontweight="bold", color=SLATE)
-    ax.set_xlabel("Total Cost per 1,000 12-Turn Agent Runs (USD)", fontsize=10.5, fontweight="bold")
+    ax.set_xlabel("Total Cost per 1,000 12-Turn Runs = 12,000 API Calls (USD)", fontsize=10.5, fontweight="bold")
     ax.set_xlim(0, max_total * 1.34)
     ax.xaxis.grid(True, color=GRID, linestyle="-", linewidth=0.8, zorder=0)
 
     ax.set_title(
-        "12-Turn Store Support Agent Cost Comparison: Caching + Smart Routing Saves 80.9%",
+        "12-Turn Store Support Agent Cost: Caching + Smart Routing Saves 79.7%",
         fontsize=12.8,
         fontweight="bold",
         pad=26,
@@ -282,7 +282,7 @@ def plot_12_turn_tco(data: dict) -> None:
     ax.text(
         0.0,
         1.025,
-        "15K starting prefix, +500 input tokens/turn, 1,200 output+thinking tokens/turn — notice how Output dominates once Input is cached",
+        r"1,000 runs = 12,000 calls (213M input + 14.4M output tokens) — single run drops from \$1.14 to \$0.23",
         transform=ax.transAxes,
         fontsize=9.2,
         color=MUTED,

@@ -50,7 +50,7 @@ Let's unpack how all of this works from the ground up — and then test every si
    - **Experiment 1:** Why you should *not* create caches manually on Gemini 4 (`HTTP 400`).
    - **Experiment 2:** How one changing timestamp at the top breaks caching — and how moving it to the end cuts input cost by **81.6%**.
    - **Experiment 3:** Why Carbon, Neon, and Hydrogen do **not** share each other's memory (and how each model remembers you when you come back).
-   - **Experiment 4:** A full 12-turn store support agent bill (**$1,140.00 down to $217.31** per 1,000 runs).
+   - **Experiment 4:** A full 12-turn store support agent bill (**$1.14 down to $0.23 per run**, or **$1,140.00 down to $231.56** per 1,000 runs / 12,000 calls).
    - **Experiment 5:** Letting Google manage conversation history with the **Interactions API** while keeping cache hits above **83%–85%**.
 4. **A 5-Rule Cheat Sheet & Official Reference Links** you can bookmark and verify yourself.
 
@@ -516,60 +516,77 @@ Here are both live experiments plotted side by side directly from our real Googl
 
 ## Experiment 4: How Much Does a Real 12-Turn Support Agent Cost? ([04_12_turn_cost_simulator.py](https://github.com/rominirani/gemini-4-prompt-caching/blob/main/examples/04_12_turn_cost_simulator.py))
 
-Now let's zoom out to a realistic production **12-turn SunnyMart order-troubleshooting agent**:
+Now let's zoom out from a single 1-sentence question to a realistic production **12-turn SunnyMart order-troubleshooting agent**:
 - **Turn 1:** Plan how to resolve a complex multi-item order issue
 - **Turns 2–11:** 10 worker turns (look up SKUs, compare warranties, calculate refunds, check shipping rules)
 - **Turn 12:** Final quality review before replying to the customer
 
-Let's trace the exact token growth of a single 12-turn run:
-- Turn 1 sends **15,000 input tokens** (the store catalog) and writes **1,200 tokens** (thinking + answer).
-- Turn 2 sends **15,500 input tokens** (catalog + 500 new tokens of context) and writes **1,200 tokens**.
-- Each turn grows by **+500 input tokens**, reaching **20,500 input tokens** by Turn 12.
+Let's count the exact tokens in **1 single 12-turn run**:
+- **Input (Reading):** Turn 1 sends **15,000 tokens** (the store catalog). Each turn adds **+500 tokens** of conversation history (`15,000 + 15,500 + 16,000 + ... + 20,500`), totaling **213,000 input tokens across all 12 calls**.
+- **Output + Thinking (Writing):** Unlike Experiments 2 and 3 (which only wrote ~25-token 1-sentence answers), a real multi-step support agent thinks and writes **1,200 tokens per turn** × 12 turns = **14,400 output tokens per run**.
 
-Our local Python script (`examples/04_12_turn_cost_simulator.py`, zero API cost to run!) calculates the exact bill for **1,000 full 12-turn runs** across four setups using the official [Gemini API Pricing](https://aistudio.google.com/docs/pricing):
+### Wait — Let's Verify Setup A's Cost on a Calculator First!
+
+Before looking at 1,000 runs, let's calculate **1 single uncached 12-turn run on Gemini 4 Carbon** (`$4.00 / 1M` input, `$20.00 / 1M` output):
+
+- **Reading cost (1 run):** `213,000 tokens × ($4.00 / 1,000,000)` = **`$0.852`** (85.2 cents)
+- **Writing cost (1 run):** `14,400 tokens × ($20.00 / 1,000,000)` = **`$0.288`** (28.8 cents)
+- **Total for 1 single 12-turn run:** `$0.852 + $0.288` = **`$1.14`** (~9.5 cents per turn)
+
+Now scale that up to **1,000 customer support sessions** — which is **12,000 individual API calls** (**213 million** input tokens + **14.4 million** output tokens!):
+
+- `$1.14 × 1,000 runs` = **`$1,140.00`** (`$852.00` reading + `$288.00` writing)
+
+That is why the 1,000-run number looks so much bigger than Experiment 2's `$4.13`: Experiment 2 measured 1,000 single calls on Hydrogen with tiny 28-token answers, whereas Experiment 4 measures **12,000 calls** (12 turns × 1,000 runs) with **1,200-token thinking + output replies** starting on Carbon!
+
+Our local Python simulator ([`examples/04_12_turn_cost_simulator.py`](https://github.com/rominirani/gemini-4-prompt-caching/blob/main/examples/04_12_turn_cost_simulator.py), zero API cost to run!) tracks each model's own cached prefix independently and compares four setups using the official [Gemini API Pricing](https://aistudio.google.com/docs/pricing):
 
 ### Real Output
 
 ```text
 === Experiment 4: 12-Turn Store Support Agent Cost Comparison ===
+Scale: 1 run = 12 API calls (213K input + 14.4K output tokens)
+       1,000 runs = 12,000 API calls (213M input + 14.4M output tokens)
 
-A. All Carbon (broken prefix, 0% cache)     -> $1140.00 / 1,000 runs ($1.1400/run | in=$852.00, out=$288.00 | saves  0.0%)
-B. All Carbon (stable prefix, 95% cache)    -> $ 408.50 / 1,000 runs ($0.4085/run | in=$120.50, out=$288.00 | saves 64.2%)
-C. All Neon (stable prefix, 95% cache)      -> $ 306.38 / 1,000 runs ($0.3064/run | in=$ 90.38, out=$216.00 | saves 73.1%)
-D. Neon plan/review + 10 batched Hydrogen   -> $ 217.31 / 1,000 runs ($0.2173/run | in=$ 91.31, out=$126.00 | saves 80.9%)
+A. All Carbon (broken prefix, 0% cache)     -> $1.1400/run | $1140.00 / 1,000 runs (in=$852.00, out=$288.00 | saves  0.0%)
+B. All Carbon (stable prefix, 95% cache)    -> $0.4085/run | $ 408.50 / 1,000 runs (in=$120.50, out=$288.00 | saves 64.2%)
+C. All Neon (stable prefix, 95% cache)      -> $0.3064/run | $ 306.38 / 1,000 runs (in=$ 90.38, out=$216.00 | saves 73.1%)
+D. Neon plan/review + 10 batched Hydrogen   -> $0.2316/run | $ 231.56 / 1,000 runs (in=$105.56, out=$126.00 | saves 79.7%)
 ```
+
+*(Note: This simulator models upper-bound prefix caching where each consecutive turn on the same model reuses all tokens that model has previously seen — which matches turns adding 2,050+ tokens of tool/model context. For tiny turns below 2,050 new tokens, expect the ~2,050-token trailing window from Part 2 to add a few cents per turn.)*
 
 Look closely at the **blue (reading/input)** vs. **orange (writing/output + thinking)** bars in Figure 5 — this reveals a huge lightbulb moment:
 
 ![12-Turn Store Support Agent Cost Comparison](images/05_chart_12_turn_tco.png)
-*Figure 5: Prompt caching alone cuts total cost from $1,140 to $408.50 (-64.2%). Notice the orange bar: once reading is cheap, writing (Output + Thinking) becomes 70% of your bill! Batching the 10 worker turns on Hydrogen drops the total all the way to $217.31 (-80.9%).*
+*Figure 5: Prompt caching alone cuts 1,000 12-turn runs (12,000 API calls) from $1,140 to $408.50 (-64.2%). Notice the orange bar: once reading is cheap, writing (Output + Thinking) becomes 70% of your bill! Batching the 10 worker turns on Hydrogen drops the total all the way to $231.56 (-79.7%, or $0.23 per 12-turn run).*
 
 Let's follow the story from top bar to bottom bar:
 
-1. **Setup A → Setup B (`$1,140.00` → `$408.50`, saves `$731.50` / 64.2%):**
+1. **Setup A → Setup B (`$1.14` → `$0.41` per run | `$1,140.00` → `$408.50` per 1,000 runs, saves 64.2%):**
    We didn't change the model at all — we ONLY fixed our prompt prefix so it stayed identical from Token 0! That single change slashed the reading bill (blue) from **$852.00 down to $120.50**.
 2. **The Big Surprise — Look at the Orange Bar!**
    In Setup B, reading is now only **$120.50**, while writing (Output + Thinking on Carbon at `$20.00/1M`) is **$288.00** — **70% of the entire invoice!** Why? Because prompt caching only discounts what the model *reads* (input), never what it *writes* (output + thinking).
-3. **Setup B → Setup D (`$408.50` → `$217.31`, saves 80.9% total!):**
+3. **Setup B → Setup D (`$0.41` → `$0.23` per run | `$408.50` → `$231.56` per 1,000 runs, saves 79.7% total!):**
    Now look what happens when you combine **prompt caching** with **smart model batching**:
    - **Turn 1:** Use **Neon** to make a smart plan.
    - **Turns 2–11:** Batch all **10 worker turns consecutively on Hydrogen** (which charges `$7.50/1M` to write instead of Carbon's `$20.00/1M`!).
-   - **Turn 12:** Hand back to **Neon** (whose cache is still warm!) for the final review.
-   - Result: Writing costs drop from **$288.00 down to $126.00**, and your total bill drops from **$1.14 per agent run down to $0.22 per agent run!**
+   - **Turn 12:** Hand back to **Neon** for the final review. Because caches are per-model, Neon reuses the **15,000 tokens it cached on Turn 1** and only pays normal price for the **5,500 new tokens** added while Hydrogen was working!
+   - Result: Writing costs drop from **$288.00 down to $126.00**, and your total bill drops from **$1.14 per 12-turn run down to just $0.23 per 12-turn run** (less than **2 cents per turn!**).
 
-Here is the exact turn-by-turn receipt for **Setup D** (per 1,000 runs):
+Here is the exact turn-by-turn receipt for **Setup D** (showing both **1 run** and **1,000 runs = 12,000 calls**):
 
-| Turn | Step & Model | Total Input | Cached (95% Off) | Uncached | Reading Cost ($/1K) | Writing Cost ($/1K) | Turn Total ($/1K) |
+| Turn | Step & Model | Total Input | Cached (95% Off) | Uncached | Reading ($/1K runs) | Writing ($/1K runs) | Turn Total ($/1K runs) |
 | :---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | Plan (`gemini-4-neon`) | 15,000 | 0 *(cold)* | 15,000 | $45.00 | $18.00 | **$63.00** |
 | 2 | Worker 1 (`gemini-4-hydrogen`) | 15,500 | 0 *(cold)* | 15,500 | $23.25 | $9.00 | **$32.25** |
 | 3 | Worker 2 (`gemini-4-hydrogen`) | 16,000 | 15,500 | 500 | $1.91 | $9.00 | **$10.91** |
 | 4–10 | Workers 3–9 (`gemini-4-hydrogen`) | 16.5K–19.5K | 16K–19K | 500 | $1.95–$2.18 | $9.00 | **$10.95–$11.18** |
 | 11 | Worker 10 (`gemini-4-hydrogen`) | 20,000 | 19,500 | 500 | $2.21 | $9.00 | **$11.21** |
-| 12 | Review (`gemini-4-neon`) | 20,500 | 20,000 *(warm!)* | 500 | $4.50 | $18.00 | **$22.50** |
-| **Total** | **All 12 Turns** | **213,000** | **182,500** | **30,500** | **$91.31** | **$126.00** | **$217.31** |
+| 12 | Review (`gemini-4-neon`) | 20,500 | 15,000 *(from Turn 1!)* | 5,500 | $18.75 | $18.00 | **$36.75** |
+| **Total** | **All 12 Turns (× 1,000 runs)** | **213,000** | **177,500** | **35,500** | **$105.56** | **$126.00** | **$231.56** *(**$0.23/run**)* |
 
-Look at Turns 2–11: Turn 2 pays a one-time **$23.25** fee to warm up Hydrogen's notebook, and then **Turns 3 through 11 cruise at ~$2.00 per 1,000 calls for reading!** That is why batching worker turns together on one model beats switching models every single turn.
+Look at Turns 2–11: Turn 2 pays a one-time **$23.25** (`2.3 cents/run`) fee to warm up Hydrogen's notebook, and then **Turns 3 through 11 cruise at ~$2.00 per 1,000 runs (`0.2 cents/turn`) for reading!** That is why batching worker turns together on one model beats switching models every single turn.
 
 ---
 

@@ -11,7 +11,7 @@ Inspired by Google Cloud's official notebook ([gemini_4_per_model_prompt_caching
 - **What Prompt Caching (KV Caching) is** in plain English, and how Gemini 4 delivers an automatic **95% discount** on cached input tokens once a shared prefix hits **4,096 tokens** ([Context Caching Docs](https://aistudio.google.com/docs/caching)).
 - **Why one timestamp at Token 0 kills your cache** — and how reordering your prompt cuts live Hydrogen input costs by **81.6%** (`$22.43` → `$4.13` per 1,000 calls) and drops latency from `3.39s` to `1.72s`.
 - **Why KV caches are isolated per model** across Carbon, Neon, and Hydrogen — and how each model's cache stays warm when you switch back.
-- **Why Output + Thinking dominates after caching** — dropping a 12-turn store support agent from **`$1,140.00` down to `$217.31` per 1,000 runs (-80.9%)** using a *Neon Plan → Batched Hydrogen Workers → Neon Review* pattern.
+- **Why Output + Thinking dominates after caching** — dropping a 12-turn store support agent from **`$1.14` down to `$0.23` per run** (**`$1,140.00` → `$231.56`** per 1,000 runs / 12,000 API calls, **-79.7%**) using a *Neon Plan → Batched Hydrogen Workers → Neon Review* pattern.
 - **How to use implicit caching with the stateful [Interactions API](https://aistudio.google.com/docs/interactions-overview)** (`previous_interaction_id`).
 
 ---
@@ -109,7 +109,7 @@ python3 -m venv .venv
 | **1. Explicit Cache Check** | `client.caches.create()` on `gemini-4-neon` returns `HTTP 400` — implicit caching only. |
 | **2. Prefix Ordering (`Hydrogen`)** | Dynamic header at Token 0: `0%` cached (`$22.37`–`$22.45/1K`). Static-first Turn 2: **`85.9%` cached (`12,846 / 14,955`)**, input drops to **`$4.13/1K` (-81.6%)**, latency drops `3.39s → 1.72s`. |
 | **3. Per-Model Isolation** | Cold starts on Carbon (`$59.58/1K`), Neon (`$44.85/1K`), Hydrogen (`$22.50/1K`). Warm hits: Hydrogen **`52.0%` (`$11.96/1K`)**, Neon **`85.4%` (`$8.56/1K`)**, Carbon **`84.7%` (`$11.85/1K`, latency `7.76s → 4.52s`)**. |
-| **4. 12-Turn Agent Costs** | All Carbon broken prefix (`$1,140.00/1K runs`) → All Carbon cached (`$408.50`, `-64.2%`) → All Neon cached (`$306.38`, `-73.1%`) → Neon Plan/Review + 10 Hydrogen Workers (**`$217.31`**, **`-80.9%`**). |
+| **4. 12-Turn Agent Costs** | All Carbon broken prefix (`$1.14/run` / `$1,140.00` per 1K runs) → All Carbon cached (`$408.50`, `-64.2%`) → All Neon cached (`$306.38`, `-73.1%`) → Neon Plan/Review + 10 Hydrogen Workers (**`$0.23/run`** / **`$231.56`**, **`-79.7%`**). |
 | **5. Interactions API Handoffs** | `Neon → 3× Hydrogen → Neon` via `previous_interaction_id`: Hydrogen workers hit **`85.6%`** & **`85.8%`** (`$4.24`–`$4.21/1K`); Neon verify hit **`83.4%`** (`$9.61/1K`). |
 
 ## Official Documentation References

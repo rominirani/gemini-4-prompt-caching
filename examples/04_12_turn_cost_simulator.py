@@ -5,10 +5,12 @@ Models a realistic 12-turn SunnyMart order-support agent loop:
   - Turns 2-11: 10 worker turns (check SKUs, compare warranties, verify shipping)
   - Turn 12: Final quality review
   - Starting input catalog prefix: 15,000 tokens
-  - Context growth per turn: +500 input tokens
-  - Thinking + output per turn: 1,200 tokens
+  - Context growth per turn: +500 input tokens (213,000 input tokens across 12 turns)
+  - Thinking + output per turn: 1,200 tokens (14,400 output tokens across 12 turns)
 
-Compares four deployment setups across 1,000 agent runs (no live API calls).
+Tracks each model's own cached prefix length independently (per-model KV cache
+isolation) and prints both single-run cost (12 calls) and 1,000-run cost
+(12,000 total API calls). Runs locally with zero API calls.
 """
 
 from __future__ import annotations
@@ -33,21 +35,23 @@ def simulate_12_turn_cost(
     turn_growth: int = 500,
     out_per_turn: int = 1_200,
 ) -> dict:
-    """Simulate token counts and total cost per 1,000 12-turn agent runs."""
-    seen_models: set[str] = set()
+    """Simulate token counts and exact cost per 1 run (12 calls) and per 1,000 runs."""
+    # Track the prefix length each individual model has previously cached
+    cached_prefix_by_model: dict[str, int] = {}
     total_input_per_1k = 0.0
     total_output_per_1k = 0.0
     turns: list[dict] = []
 
     for idx, (model_id, stable_prefix) in enumerate(schedule):
         in_tok = base_in + idx * turn_growth
+        # A model can only reuse tokens IT has previously seen in its own KV cache
         cached_tok = (
-            (base_in + max(0, idx - 1) * turn_growth)
-            if (stable_prefix and model_id in seen_models)
+            cached_prefix_by_model.get(model_id, 0)
+            if stable_prefix
             else 0
         )
         if stable_prefix:
-            seen_models.add(model_id)
+            cached_prefix_by_model[model_id] = in_tok
 
         cost = calculate_cost(model_id, in_tok, cached_tok, out_per_turn)
         in_cost_1k = cost["input_cost_per_1k_usd"]
@@ -81,7 +85,9 @@ def simulate_12_turn_cost(
 
 
 def main() -> None:
-    print("=== Experiment 4: 12-Turn Store Support Agent Cost Comparison ===\n")
+    print("=== Experiment 4: 12-Turn Store Support Agent Cost Comparison ===")
+    print("Scale: 1 run = 12 API calls (213K input + 14.4K output tokens)")
+    print("       1,000 runs = 12,000 API calls (213M input + 14.4M output tokens)\n")
 
     schedules = {
         "A. All Carbon (broken prefix, 0% cache)": [(CARBON_MODEL, False)] * 12,
@@ -106,9 +112,9 @@ def main() -> None:
         summary[label] = sim
 
         print(
-            f"{label:<43} -> ${sim['total_per_1k_runs_usd']:>7.2f} / 1,000 runs "
-            f"(${sim['single_run_cost_usd']:.4f}/run | "
-            f"in=${sim['input_cost_per_1k_runs_usd']:>6.2f}, "
+            f"{label:<43} -> ${sim['single_run_cost_usd']:.4f}/run | "
+            f"${sim['total_per_1k_runs_usd']:>7.2f} / 1,000 runs "
+            f"(in=${sim['input_cost_per_1k_runs_usd']:>6.2f}, "
             f"out=${sim['output_cost_per_1k_runs_usd']:>6.2f} | "
             f"saves {savings_pct:4.1f}%)"
         )
