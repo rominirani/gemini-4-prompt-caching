@@ -2,6 +2,9 @@
 
 *A plain-English, step-by-step guide to what prompt caching actually is, how it works behind the scenes using an everyday online store example, why one tiny timestamp can silently wipe out your savings, and how caching behaves across Gemini 4 Carbon, Neon, and Hydrogen — backed by official Google docs, live Google Cloud runs, and exact dollar math.*
 
+![Prompt Caching at a Glance](images/prompt_caching_infographic.png)
+*Prompt Caching at a Glance: Read static context once, reuse saved memory, keep changing metadata at the end, and batch turns per model.*
+
 ---
 
 ## A Quick Note Before We Begin: Credit & Why We Took a Different Approach

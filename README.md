@@ -36,6 +36,7 @@ prompt-caching/
 ├── scripts/
 │   └── generate_charts.py                # Rebuilds Matplotlib PNG charts from experiment_results.json
 └── images/
+    ├── prompt_caching_infographic.png    # Evergreen Summary Infographic: Prompt Caching at a Glance
     ├── 01_what_is_prompt_caching.png     # Illustration: Cold Prefill vs. Warm KV Cache
     ├── 02_prefix_matching_rule.png       # Illustration: Token-0 Prefix Matching Rule (Store Catalog)
     ├── 03_per_model_kv_isolation.png     # Illustration: Per-Model KV Cache Vaults
