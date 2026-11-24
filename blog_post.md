@@ -74,14 +74,14 @@ Now imagine you hire a smart store clerk to answer ten quick customer questions 
 
 ### Step by Step: What Actually Happens When You Send Three Requests?
 
-Forget complicated neural-network formulas. Let's trace our **SunnyMart** customer-support bot, which always attaches a **14,880-token Store Product Catalog** to every prompt.
+Forget complicated neural-network formulas. Let's trace our **SunnyMart** customer-support bot, which always attaches our **~15,000-token Store Product Catalog** to every prompt.
 
 #### Step 1: Your app sends Request #1 (Cold Start)
 
 ```text
 REQUEST #1 sent to Gemini:
 ┌────────────────────────────────────────────────────────────────┐
-│ [Beginning of prompt — 14,880 tokens]                          │
+│ [Beginning of prompt — ~15,000 tokens]                         │
 │ "You are a friendly SunnyMart store support assistant...       │
 │  ## Item SKU-001: Everyday Ceramic Mug — $11.00, 201 grams...  │
 │  ... ## Item SKU-190: Scented Soy Desk Candle — $200, 390g"    │
@@ -98,14 +98,14 @@ Here is what Gemini does behind the scenes in two simple stages:
 
 Before Gemini finishes Request #1, Google's server quietly keeps a copy of those study notes in fast memory.
 
-- **Cost of Request #1:** You pay **100% full price** for all ~14,900 input tokens, because this was the first time Gemini read the catalog.
+- **Cost of Request #1:** You pay **100% full price** for all ~15,012 input tokens, because this was the first time Gemini read the catalog.
 
 #### Step 2: Five seconds later, your app sends Request #2 (Cache Hit!)
 
 ```text
 REQUEST #2 sent to Gemini:
 ┌────────────────────────────────────────────────────────────────┐
-│ [Beginning of prompt — EXACT SAME 14,880 tokens!]              │
+│ [Beginning of prompt — EXACT SAME ~15,000 tokens!]             │
 │ "You are a friendly SunnyMart store support assistant...       │
 │  ## Item SKU-001: Everyday Ceramic Mug — $11.00, 201 grams...  │
 │  ... ## Item SKU-190: Scented Soy Desk Candle — $200, 390g"    │
@@ -182,15 +182,15 @@ When you run your own caching tests, two behaviors might surprise you unless you
 
 #### Quirk 1: Why is my cache hit ~85%–86% instead of 99.9% on short chats?
 
-Suppose Turn 1 had **14,900 tokens**, and on Turn 2 the customer asks a tiny 15-token follow-up question. You might expect Gemini to cache **14,885 tokens (99.9%)**. Instead, you will see roughly **12,850 tokens cached (~86%)** and **~2,100 tokens charged at full price**!
+Suppose Turn 1 had **15,000 tokens**, and on Turn 2 the customer asks a tiny 15-token follow-up question. You might expect Gemini to cache **14,985 tokens (99.9%)**. Instead, you will see roughly **12,950 tokens cached (~86%)** and **~2,065 tokens charged at full price**!
 
 Here is what Gemini 4 is doing, straight from the official [Context Caching Guide](https://aistudio.google.com/docs/caching):
 
 ```text
-Your ~14,955-token Turn 2 request:
+Your ~15,015-token Turn 2 request:
 ┌───────────────────────────────────────────┬──────────────────────────┐
-│ Token 1 ...................... Token 12,846│ Token 12,847 ... 14,955  │
-│        Reused from cache (95% OFF!)        │  Re-read (~2,109 tokens) │
+│ Token 1 ...................... Token 12,950│ Token 12,951 ... 15,015  │
+│        Reused from cache (95% OFF!)        │ Re-read (~2,065 tokens)  │
 └───────────────────────────────────────────┴──────────────────────────┘
 ```
 
@@ -212,7 +212,7 @@ You will see **both** of these real-world behaviors happen honestly in our live 
 
 Instead of a Jupyter notebook, we built **five small, standalone Python scripts** in [`examples/`](https://github.com/rominirani/gemini-4-prompt-caching/tree/main/examples) that share one tiny helper file, [`common.py`](https://github.com/rominirani/gemini-4-prompt-caching/blob/main/common.py).
 
-Rather than reusing the distributed-systems microservice jargon from the original notebook, we created an original, super-simple **SunnyMart Online Store Product Catalog** listing **190 everyday products** (`SKU-001` through `SKU-190`), totaling **~14,900 tokens** (comfortably above Gemini 4's 4,096-token caching minimum).
+Rather than reusing the distributed-systems microservice jargon from the original notebook, we created an original, super-simple **SunnyMart Online Store Product Catalog** listing **190 everyday products** (`SKU-001` through `SKU-190`). When tokenized by Gemini, those 190 items come out to **~14,900 tokens** — right around the 15,000-token ballpark we used in our walkthrough above, and comfortably above Gemini 4's 4,096-token caching minimum.
 
 Here is what the first few lines of that generated catalog actually look like:
 
