@@ -172,7 +172,7 @@ Here are the verified **Standard Tier** (`location="global"`) rates from the off
 "Per 1 million tokens" sounds abstract, so let's plug in a real number. Suppose your SunnyMart catalog is **15,000 input tokens**, and your store answers **1,000 customer questions** today (`15,000 × 1,000 = 15,000,000` tokens = 15 million tokens) using **Gemini 4 Hydrogen**:
 
 - **With 0% caching (full price):** `15M × $1.50` = **$22.50**
-- **If all 15K were cached (95% off):** `15M × $0.075` = **$1.13**
+- **If all 15K were cached (95% off):** `15M × $0.075` = **$1.125** (~**$1.13**)
 
 That is the difference between **$22.50** and **$1.13** for the exact same answers.
 
@@ -182,7 +182,7 @@ When you run your own caching tests, two behaviors might surprise you unless you
 
 #### Quirk 1: Why is my cache hit ~85%–86% instead of 99.9% on short chats?
 
-Suppose Turn 1 had **15,000 tokens**, and on Turn 2 the customer asks a tiny 15-token follow-up question. You might expect Gemini to cache **14,985 tokens (99.9%)**. Instead, you will see roughly **12,950 tokens cached (~86%)** and **~2,065 tokens charged at full price**!
+Suppose Turn 1 had **15,000 tokens**, and on Turn 2 the customer asks a tiny 15-token follow-up question (making Turn 2 **15,015 tokens** total). You might expect Gemini to cache all **15,000 tokens (99.9%)** from Turn 1. Instead, you will see roughly **12,950 tokens cached (~86.2%)** and **~2,065 tokens charged at full price**!
 
 Here is what Gemini 4 is doing, straight from the official [Context Caching Guide](https://aistudio.google.com/docs/caching):
 
@@ -374,6 +374,7 @@ for turn in (1, 2):
             thinking_config=types.ThinkingConfig(thinking_level="LOW"),
         ),
     )
+    history.append(types.Content(role="model", parts=[types.Part.from_text(text=resp.text)]))
 
 # PART B — FIXED: system_instruction never changes; dynamic turn goes at the END
 for turn in (1, 2, 3):
@@ -391,6 +392,7 @@ for turn in (1, 2, 3):
             thinking_config=types.ThinkingConfig(thinking_level="LOW"),
         ),
     )
+    history.append(types.Content(role="model", parts=[types.Part.from_text(text=resp.text)]))
 ```
 
 ### Real Output From Google Cloud
@@ -426,11 +428,11 @@ Now check the exact grocery-receipt math for **Fixed Turn 2**:
 
 | Line Item on Static-First Turn 2 | Tokens | Official Rate (per 1M) | Cost for 1 Call | Cost for 1,000 Calls |
 | :--- | ---: | ---: | ---: | ---: |
-| **Cached input** (reused study notes) | 12,846 | $0.075 | $0.000963 | **$0.96** |
-| **Uncached input** (~2,050 trailing window + 59 new tokens) | 2,109 | $1.500 | $0.003164 | **$3.16** |
-| **Total Input Bill (With Caching)** | **14,955** | — | **$0.004127** | **$4.13** |
-| *What Input Would Have Cost Without Caching* | *14,955* | *$1.500* | *$0.022433* | *$22.43* |
-| **Output + Thinking** (the 1-sentence answer) | 28 | $7.500 | $0.000210 | **$0.21** |
+| **Cached input** (reused study notes) | 12,846 | $0.075 | $0.000963 | **$0.963** |
+| **Uncached input** (~2,050 trailing window + 59 new tokens) | 2,109 | $1.500 | $0.003164 | **$3.164** |
+| **Total Input Bill (With Caching)** | **14,955** | — | **$0.004127** | **$4.127** *(~$4.13)* |
+| *What Input Would Have Cost Without Caching* | *14,955* | *$1.500* | *$0.022433* | *$22.433* *(~$22.43)* |
+| **Output + Thinking** (the 1-sentence answer) | 28 | $7.500 | $0.000210 | **$0.210** |
 
 Look at those exact numbers:
 - Input cost plunged from **$22.43 down to $4.13 per 1,000 calls** (**81.6% cheaper!**).
@@ -504,8 +506,8 @@ Watch every single step in that live table:
 2. **Step 2 (`Neon` — first time):** Even though Carbon *just* read the exact same 14,900-token catalog seconds earlier, Neon's notebook is blank → **`0` cached**, pays **$44.85 / 1K calls**. Neon saves its notes.
 3. **Step 3 (`Hydrogen` — first time):** Hydrogen's notebook is blank too → **`0` cached**, pays **$22.50 / 1K calls**. Hydrogen saves its notes.
 4. **Step 4 (`Hydrogen` — second time in a row):** Hydrogen opens its own notebook and gets a partial block cache hit (**8,192 tokens cached — 52.0% hit!**), immediately cutting input cost nearly in half from **$22.50 down to $11.96 / 1K calls** (**49.4% savings** vs. the `$23.63/1K` uncached cost for 15,754 tokens). *(On consecutive turns, as you'll see in Experiment 5 right below, Hydrogen climbs straight to ~85.8%!)*
-5. **Step 5 (Back to `Neon`):** Neon's notebook from Step 2 is **still open and warm!** → **12,902 tokens cached (85.4% hit!)**. Input cost drops from **$44.85 down to $8.56 / 1K calls** (**81.1% savings**!) and response time speeds up from `3.40s` to `2.94s`.
-6. **Step 6 (Back to `Carbon`):** Carbon's notebook from Step 1 is **also still warm!** → **12,841 tokens cached (84.7% hit!)**. Input cost drops from **$59.58 down to $11.85 / 1K calls** (**80.5% savings**!), AND response time drops from **7.76s down to 4.52s** (**42% faster!**).
+5. **Step 5 (Back to `Neon`):** Neon's notebook from Step 2 is **still open and warm!** → **12,902 tokens cached (85.4% hit!)**. Input cost drops to **$8.56 / 1K calls** (**81.1% savings** vs. Step 5's `$45.33/1K` uncached price for 15,110 tokens!) and response time speeds up from `3.40s` to `2.94s`.
+6. **Step 6 (Back to `Carbon`):** Carbon's notebook from Step 1 is **also still warm!** → **12,841 tokens cached (84.7% hit!)**. Input cost drops to **$11.85 / 1K calls** (**80.5% savings** vs. Step 6's `$60.64/1K` uncached price for 15,161 tokens!), AND response time drops from **7.76s down to 4.52s** (**42% faster!**).
 
 Here are both live experiments plotted side by side directly from our real Google Cloud telemetry:
 
@@ -584,7 +586,7 @@ Here is the exact turn-by-turn receipt for **Setup D** (showing both **1 run** a
 | 4–10 | Workers 3–9 (`gemini-4-hydrogen`) | 16.5K–19.5K | 16K–19K | 500 | $1.95–$2.18 | $9.00 | **$10.95–$11.18** |
 | 11 | Worker 10 (`gemini-4-hydrogen`) | 20,000 | 19,500 | 500 | $2.21 | $9.00 | **$11.21** |
 | 12 | Review (`gemini-4-neon`) | 20,500 | 15,000 *(from Turn 1!)* | 5,500 | $18.75 | $18.00 | **$36.75** |
-| **Total** | **All 12 Turns (× 1,000 runs)** | **213,000** | **177,500** | **35,500** | **$105.56** | **$126.00** | **$231.56** *(**$0.23/run**)* |
+| **Total** | **All 12 Turns (× 1,000 runs)** | **213,000** | **172,500** | **40,500** | **$105.56** | **$126.00** | **$231.56** *(**$0.23/run**)* |
 
 Look at Turns 2–11: Turn 2 pays a one-time **$23.25** (`2.3 cents/run`) fee to warm up Hydrogen's notebook, and then **Turns 3 through 11 cruise at ~$2.00 per 1,000 runs (`0.2 cents/turn`) for reading!** That is why batching worker turns together on one model beats switching models every single turn.
 
@@ -652,9 +654,9 @@ Notice how each turn automatically knew what the previous turn said — even acr
 
 1. **Turn 1 (`Neon` — Plan):** Answered *"The unit price is $11.00 for SKU-001 (Everyday Ceramic Mug, Edition 1) and $12.00 for SKU-002 (Insulated Travel Tumbler, Edition 1)."* Cold start (**0% cached**, `$44.69/1K`).
 2. **Turn 2 (`Hydrogen` — Worker 1):** Answered *"The subtotal for buying both SKU-001 ($11.00) and SKU-002 ($12.00) is $23.00."* First Hydrogen call, so cold start (**0% cached**, `$22.45/1K`).
-3. **Turn 3 (`Hydrogen` — Worker 2):** Answered *"The price difference between SKU-002 ($12.00) and SKU-001 ($11.00) is $1.00."* **Cache hit: 85.6%!** Input cost dropped to **$4.24/1K** (**81.3% savings**!).
-4. **Turn 4 (`Hydrogen` — Worker 3):** Answered `{"subtotal": 23.00, "price_difference": 1.00}`. **Cache hit: 85.8%!** Input cost stayed at **$4.21/1K** (**81.5% savings**!).
-5. **Turn 5 (`Neon` — Verify):** Answered *"Confirmed: the JSON values match the catalog prices for SKU-001 ($11.00) and SKU-002 ($12.00), yielding a subtotal of $23.00 and a price difference of $1.00."* **Neon's cache was still warm — 83.4% hit!** Input cost dropped from **$44.69 down to $9.61/1K** (**79.2% savings**!).
+3. **Turn 3 (`Hydrogen` — Worker 2):** Answered *"The price difference between SKU-002 ($12.00) and SKU-001 ($11.00) is $1.00."* **Cache hit: 85.6%!** Input cost dropped to **$4.24/1K** (**81.3% savings** vs. Turn 3's `$22.65/1K` uncached price!).
+4. **Turn 4 (`Hydrogen` — Worker 3):** Answered `{"subtotal": 23.00, "price_difference": 1.00}`. **Cache hit: 85.8%!** Input cost stayed at **$4.21/1K** (**81.5% savings** vs. Turn 4's `$22.81/1K` uncached price!).
+5. **Turn 5 (`Neon` — Verify):** Answered *"Confirmed: the JSON values match the catalog prices for SKU-001 ($11.00) and SKU-002 ($12.00), yielding a subtotal of $23.00 and a price difference of $1.00."* **Neon's cache was still warm — 83.4% hit!** Input cost dropped to **$9.61/1K** (**79.2% savings** vs. Turn 5's `$46.21/1K` uncached price!).
 
 Finally, our script deleted all 5 stored interactions using `client.interactions.delete(interaction_id)` so nothing unnecessary stays stored on the server. *(Tip: Remember to still pass `system_instruction` on every turn in the Interactions API — as noted in the [Interactions API Overview](https://aistudio.google.com/docs/interactions-overview), `system_instruction` is interaction-scoped, meaning you re-send it on each turn!)*
 

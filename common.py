@@ -43,7 +43,7 @@ OUTPUT_RATES_PER_1M: dict[str, float] = {
 
 RESULTS_FILE = Path(__file__).resolve().parent / "results" / "experiment_results.json"
 
-# Everyday sample products used to build a simple, original ~14,500-token store catalog
+# Everyday sample products used to build a simple, original ~15,000-token store catalog
 CATALOG_TEMPLATES: list[tuple[str, str]] = [
     ("Everyday Ceramic Mug", "Kitchen"),
     ("Insulated Travel Tumbler", "Kitchen"),

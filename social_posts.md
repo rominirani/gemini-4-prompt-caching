@@ -6,7 +6,7 @@
 2. **One Timestamp Just Cost You 81% of Your LLM Bill: A Plain-English Guide to Gemini 4 Prompt Caching** *(High CTR curiosity hook)*
 3. **How Prompt Caching Actually Works (Step-by-Step Store Catalog Example, Illustrations & Exact Token Math)** *(Strong beginner search intent)*
 4. **Stop Re-Reading Your System Prompt: Per-Model Prompt Caching Across Gemini 4 Carbon, Neon, and Hydrogen** *(Architecture & agent builders)*
-5. **From $1,140 to $231 per 1,000 Agent Runs: Prompt Caching + Multi-Model Batching in Gemini 4** *(Data-driven FinOps / engineering hook)*
+5. **From $1,140 to $231.56 per 1,000 Agent Runs: Prompt Caching + Multi-Model Batching in Gemini 4** *(Data-driven FinOps / engineering hook)*
 
 ---
 
